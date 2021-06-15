@@ -8,7 +8,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'A very very secret key'
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql:///urbanmaps_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql:///urbanmaps_test_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = True
 
@@ -23,26 +23,31 @@ CURR_USER_KEY = "curr_user"
 def start_homepage():
     return render_template('home.html')
 
-##############################################################
-#              Setup Flask global user variable              #
-##############################################################
+#############################################################
+#             Setup Flask global user variable              #
+#############################################################
 
 @app.before_request
 def add_user_to_g():
     """If user is logged in, add current user to Flask global."""
-
+    print(f'****** add_user_to_g() running')
+    print(f'SESSION: {session.get(CURR_USER_KEY)}')
     if CURR_USER_KEY in session:
+        
         g.user = User.query.get(session[CURR_USER_KEY])
+        print(f'***** g.user at loggin: ', g.user)
     else:
         g.user = None
 
 def do_login(user):
     """Log in user, by adding user tosession."""
     session[CURR_USER_KEY] = user.id
+    print(f'**** LOGGING IN ****  session[CURR_USER_KEY]: ', session.get(CURR_USER_KEY), '-- user.id: ', user.id)
 
 
 def do_logout():
     """Logout user, by deleting user from session."""
+    print(f'**** LOGGING OUT ***** session[CURR_USER_KEY]: ', session.get(CURR_USER_KEY))
     if CURR_USER_KEY in session:
         del session[CURR_USER_KEY]
 
@@ -50,6 +55,7 @@ def do_logout():
 #              routes for users                              #
 ##############################################################
 
+####     User Registration    ######
 @app.route('/users/register', methods=["GET", "POST"])
 def signup():
     """ Run user setup:  
@@ -81,6 +87,7 @@ def signup():
         return render_template('register.html', form=form)
 
 
+####     User Login            ######
 @app.route('/users/login', methods=["GET", "POST"])
 def login():
     """Handle user login."""
@@ -94,51 +101,54 @@ def login():
         if user:
             do_login(user)
             flash(f"Hello, {user.username}!", "success")
-            return redirect("/")
+            return redirect(f'/users/{user.id}')
 
-        flash("Invalid credentials.", 'danger')
+        flash("Invalid Password.", 'danger')
 
     return render_template('login.html', form=form)
 
 
+####     User Logout           ######
 @app.route('/users/logout')
 def logout():
     """Handle logout of user."""
 
     do_logout()
     flash("You have been logged out, Thanks for visiting!", "success")
-    
+
     return redirect('/users/login')
 
 
-##### route to user page #####
-@app.route('/users/<int:id>', methods=['GET'])
-def get_user(id):
+###     User page              ######
+@app.route('/users/<int:user_id>', methods=['GET'])
+def get_user(user_id):
     '''Gets user page with trails'''
 
     # Add list of trails for user
     # name of trail, distance, duration
-    user = User.query.get_or_404(id)
+    print(f'***** g.user at /users/{user_id}: ', g.user)
+    user = User.query.get_or_404(user_id)
 
-    trails = (Trail.query
-                .filter(Trail.user_id == id)
-                .limit(10)
-                .all())
+    trails = Trail.query.filter(Trail.user_id == user_id).all()
+    trailList = [{"id": trail.id, 
+                "name": trail.name,
+                "duration": trail.duration,
+                "distance": trail.distance} for trail in trails]
+    print('**** Trails: ', trailList)
     
-    return render_template('usertrails.html', user=user, trails=trails)
+    return render_template('userpage.html', user=user, trails=trailList)
 
 
-##### route to UPDATE user #####
+####    User Profile UPDATE     ######
 @app.route('/users/profile', methods=['GET','POST'])
 def get_user_profile():
     '''Update profile for current user'''
+    print(f'***** g.user at /users/profile: ', g.user)
+    print(f'#### /users/profile #### session[CURR_USER_KEY]: {session.get(CURR_USER_KEY)}')
+    user = User.query.get_or_404(session.get(CURR_USER_KEY))
     
-    user = g.user
-    print(f'g.user: {g.user} g.user.id: {g.user.id}')
     form = UserEditProfile(obj=user)
     
-    # return render_template('test.html')
-
     if form.validate_on_submit():
         user_check = User.authenticate(form.username.data,
                                        form.password.data)
@@ -149,8 +159,7 @@ def get_user_profile():
             user.address = form.address.data
             db.session.commit()
             flash(f'User {user.username} updated', "success")
-            # return redirect(f'/users/{g.user.id}')
-            return render_template('test.html')
+            return redirect(f'/users/{g.user.id}')
         else:
             flash(f'Incorrect Password. User {user.username} not updated', "warning")
             return redirect('/')
@@ -158,12 +167,12 @@ def get_user_profile():
     return render_template('profile.html', form=form, user_id=g.user.id)
 
 
-##### route to DELETE user #####
+####     User DELETE             ######
 @app.route('/users/<int:id>', methods=['DELETE'])
 def delete_user(id):
     '''Delete user'''
     
-    if not g.user:
+    if CURR_USER_KEY not in session:
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
@@ -177,30 +186,31 @@ def delete_user(id):
 ##############################################################
 #              routes for trails                             #
 ##############################################################
-@app.route('/api/trails', methods=['GET'])
-def map_routes():
-    '''Get all trails'''
 
-    # format each trail form trail_data 
-    trails = [trail.to_coords_array() for trail in Trail.query.all()]
-    
-    return jsonify(trails=trails)
-
-@app.route('/api/trails/<int:id>', methods=['GET'])
-def get_maproute(id):
+####     Trail Details            ######
+@app.route('/users/<int:user_id>/trails/<int:trail_id>/', methods=['GET'])
+def get_maproute(user_id, trail_id):
     '''Get a map route and return details'''
-    new_trail = Trail.query.get_or_404(id).to_coords_array()
+    user = User.query.get_or_404(user_id)
+    print('##### trail_id: ', trail_id)
+    trail = Trail.query.get_or_404(trail_id).to_coords_array()
     
-    return jsonify(maproute=new_trail)
+    return (jsonify(maproute=trail))
 
-@app.route('/api/trails', methods=['POST'])
-def add_maproute():
+
+####     Add Trail for User       ######
+@app.route('/users/<int:user_id>/trails', methods=['POST'])
+def add_maproute(user_id):
     '''Store a user map route'''
+    sessionid = session.get(CURR_USER_KEY);
+    print(f'***** sessionid: {sessionid}')
+    
     name = request.json["name"]
     coords = request.json["coordinates"]
     distance = request.json["distance"]
     duration = request.json["duration"]
-    user_id = LOGGED_IN_USER;
+    
+    
     
     newTrail = Trail(name=name,
                     distance=distance,
@@ -213,32 +223,27 @@ def add_maproute():
 
     return (response, 201)
 
-@app.route('/api/trails/<int:id>', methods=['PATCH'])
-def update_maproute(id):
-    '''Update maproute name'''
-
-    trail = Trail.query.get_or_404(id)
-    trail.name = request.json.get('name', trail.name)
-    db.session.commit()
-
-    return (jsonify(maproute=trail.to_coords_array()))
     
-
-@app.route('/api/trails/<int:id>', methods=['DELETE'])
-def delete_maproute(id):
+####     Delete Trail              ######
+@app.route('/users/<int:user_id>/trails/<int:trail_id>/delete', methods=['POST'])
+def delete_maproute(user_id, trail_id):
     '''Delete a maproute'''
-    trail = Trail.query.get_or_404(id)
+    trail = Trail.query.get_or_404(trail_id)
     db.session.delete(trail)
     db.session.commit()
+    flash(f'{trail.name} is deleted', "warning")
 
-    return jsonify(message="deleted")
+    return redirect(f'/users/{user_id}')
 
+
+# MAKE NOTES A LATER OPTION
 
 ##############################################################
 #              routes for notes                              #
 ##############################################################
 
-@app.route('/api/trails/<int:trail_id>/notes', methods=['GET'])
+####     All Trail Notes            ######
+@app.route('/users/<int:user_id>/trails/<int:trail_id>/notes', methods=['GET'])
 def get_trail_notes(trail_id):
     '''Get all notes for a trail'''
 
@@ -251,17 +256,8 @@ def get_trail_notes(trail_id):
     return jsonify(noteList)
     
 
-@app.route('/api/trails/<int:trail_id>/notes/<int:note_id>', methods=['GET'])
-def get_trail_note(trail_id, note_id):
-    '''Get a single note'''
-    note = Note.query.filter(Note.id==note_id, Note.trail_id==trail_id).one_or_none()
-    noteList = {"id": notes.id, "comment": notes.comment,
-                "timestamp": notes.timestamp, "trail_id": trail_id}
-                
-    return jsonify(noteList);
-
-
-@app.route('/api/trails/<int:trail_id>/notes', methods=['POST'])
+####     Add Note to Trail           ######
+@app.route('/users/<int:user_id>/trails/<int:trail_id>/notes', methods=['POST'])
 def add_trail_note(trail_id):
     '''Add a note to a trail'''
     comment = request.json['comment']
@@ -274,19 +270,8 @@ def add_trail_note(trail_id):
     return (response, 201);
 
 
-@app.route('/api/trails/<int:trail_id>/notes/<int:note_id>', methods=['PATCH'])
-def update_note(trail_id, note_id):
-    '''Update a note'''
-    note = Note.query.filter(Note.id==note_id, Note.trail_id==trail_id).one_or_none()
-    note.comment = request.json['comment']
-    db.session.commit()
-    response = jsonify(note={"id": note.id, "comment": note.comment,
-                "timestamp": note.timestamp, "trail_id": note.trail_id})
-
-    return (response, 200);
-
-
-@app.route('/api/trails/<int:trail_id>/notes/<int:note_id>', methods=['DELETE'])
+####     Delete Trail Note         ######
+@app.route('/users/<int:user_id>/trails/<int:trail_id>/notes/<int:note_id>', methods=['DELETE'])
 def delete_note(trail_id, note_id):
     '''Delete a note'''
     note = Note.query.filter(Note.id==note_id, Note.trail_id==trail_id).one_or_none()

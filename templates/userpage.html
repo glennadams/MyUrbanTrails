@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Urban Trail Planner{% endblock %}
+
+{% block content %}
+
+<div class="row">
+    <div class="col-md-4">
+        <h1 class="display-5">Welcome {{user.username}}</h1>
+
+        <h3 class="mt-4">Save a New Trail</h3>
+        <div class="border rounded">          
+            <form class="p-3" id="new-trail" data-userid="{{user.id}}">
+                <div class="mb-3">
+                    <label for="trail" class="form-label">Urban Trail Name</label>
+                    <input type="test" class="form-control" id="trail">
+                    <div id=trail-name class="form-text">Add a name for the Urban Trail</div>
+                  </div>
+                  <button type="submit" class="btn-sm btn-primary">Add Trail</button>
+            </form>
+        </div>
+        
+
+        {% if trails %}
+        <h3 class="mt-4">My Saved Trails</h3>
+        
+        <div id=trail-list>
+            {% for trail in trails %}
+            <div class="card mt-3" style="width: 18rem;">
+                <div class="card-body">
+                    <h5 class="card-title">{{trail.name}}</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">Distance: {{trail.distance}} miles</h6>
+                    <h6 class="card-subtitle mb-2 text-muted">Duration: {{trail.duration}} minutes</h6>
+                </div>
+               
+                <div class="card-footer">
+                    <button class="btn btn-info btn-sm"
+                            data-userid="{{user.id}}"
+                            data-trailid="{{trail.id}}"
+                            id="view-btn">View</button>
+                    
+                    <form method="POST"
+                        action="/users/{{user.id}}/trails/{{trail.id}}/delete" style="display: inline-block">
+                        <button class="btn btn-secondary btn-sm">Delete</button>
+                    </form>
+                </div>
+            </div>
+            
+            {% endfor %}
+        </div>
+      
+        {% endif %}     
+    </div>
+</div>
+
+
+
+<!-- add information and image of trailmap -->
+
+
+{% endblock %}

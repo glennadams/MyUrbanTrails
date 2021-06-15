@@ -6,11 +6,11 @@
     <!-- This Jinja block for a template tab or page title -->
     <title>{% block title %}TITLE GOES HERE{% endblock %}</title>
     <!-- Include Bootstrap 5 link to CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-+0n0xVW2eSR5OomGNYDnhzAbDsOXxcvSN1TPprVMTNDbiYZCxYbOOl7+AMvyTG2x" crossorigin="anonymous">
     <link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/v2.1.1/mapbox-gl.css'/>
     <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.css" type="text/css">
     <link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.0.9/mapbox-gl-draw.css' type='text/css' />
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
-    <link rel="stylesheet" href="../static/styles.css">
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <div class="navbar navbar-light bg-primary justify-content-between">
@@ -19,17 +19,20 @@
             <ul class="navbar-nav mb-2 flex-row float-right">
                 {% if not g.user %}
                 <li class="nav-item px-2">
-                    <a href="/users/login" class="nav-link text-light">login</a>
+                    <a href="/users/login" class="nav-link text-light">Login</a>
                 </li>
                 <li class="nav-item px-2">
                     <a href="/users/register" class="nav-link text-light">Sign up</a>
                 </li>
                 {% else %}
+                <li class="nav-item px-3">
+                    <a href="/users/{{g.user.id}}" class="nav-link text-light">My Trails</a>
+                </li>
+                <li class="nav-item px-3">
+                    <a href="/users/profile" class="nav-link text-light">My Profile</a>
+                </li>
                 <li class="nav-item">
                     <a href="/users/logout" class="nav-link text-light">Logout</a>
-                    <!-- <form action="/logout" method="GET">
-                        <button class="btn btn-outline-secondary" name="logout" value="logout">Logout</button>
-                    </form> -->
                 </li>
                 {% endif %}
             </ul>
@@ -39,7 +42,7 @@
 
     <div class="container" style="margin-top: 2em">
         <div class="row">
-            <div class="col-md-8">
+            <div class="col-md-4">
             <!-- This Jinja block if for flash messages from the server -->
             {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -55,6 +58,16 @@
         </div>
         
     </div>
+    
+    <!-- Map Section -->
+    <div id='map'></div>
+
+    <div class="info-box">
+        <div id="info">
+            <p>Draw your route using the draw tools on the right.  To get the most accurate route match, draw points at regular intervals</p>
+        </div>
+        <div id="directions"></div>
+    </div>
     <!-- Intiates Bootstrap container to build on in susquent templates -->
     <div class="container">
     <!-- This Jinja block of for general content insert from template-->
@@ -69,9 +82,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
     <!-- Script to install jquery ref: https://code.jquery.com/ -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <!-- Scripts for Bootstrap 5: popper and javascript -->
-     
+    <!-- Scripts for Bootstrap 5: javascript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4" crossorigin="anonymous"></script>
     <!-- Script for application specific JS add below:-->
-    <script src="../static/maps.js"></script>
+    <script src="/static/maps.js"></script>
 </body>
 </html>
