@@ -41,7 +41,7 @@ class UrbanTrailsViewsTest(TestCase):
         db.session.commit()
 
         trail1 = Trail(
-            name="test",
+            name="testtrail",
             distance=3.5,
             duration=35.4,
             coordinates=[[-121, 36.5], [-122, 37]],
@@ -76,5 +76,93 @@ class UrbanTrailsViewsTest(TestCase):
             self.assertEqual(User.query.count(), 2)
             self.assertEqual(resp.location, "http://localhost/")
             self.assertEqual(resp.status_code, 302)
+
+            # test login for newly loggedin user
+            resp = client.post("/users/login", data=
+            {"username":"testuser2", "password": "password"},
+            follow_redirects=True)
+            html = resp.get_data(as_text=True)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn('Hello, testuser2!', html)
+
+            # test logout
+            resp = client.get("users/logout", follow_redirects=True)
+            html = resp.get_data(as_text=True)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn('You have been logged out, Thanks for visiting!', html)
+
+    def testGetUserPage(self):
+        with app.test_client() as client:
+            resp = client.get(f"/users/{self.user1.id}")
+            html = resp.get_data(as_text=True)
+    
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn(f'Welcome {self.user1.username}', html)
+
+    def testUpdateUserProfile(self):
+        with app.test_client() as client:
+            # Register a new user and login
+            resp = client.post("/users/register", data=NEW_USER2)
+            resp = client.post("/users/login", data=
+            {"username":"testuser2", "password": "password"},
+            follow_redirects=True)
+                        
+            # Now call /users/profile route
+            resp = client.post(f"/users/profile",data=
+            {"username":"testuser2", "password": "password", "email": "newmail@mail.com", "address": "New Address"},
+            follow_redirects=True)
+            html = resp.get_data(as_text=True)
+            user = User.query.filter_by(username='testuser2').first()
+                
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn(f'Welcome {user.username}', html)
+            self.assertEqual('newmail@mail.com',user.email)
+
+    def testDeleteUser(self):
+        with app.test_client() as client:
+            # Register a new user and login
+            resp = client.post("/users/register", data=NEW_USER2)
+            resp = client.post("/users/login", data=
+            {"username":"testuser2", "password": "password"},
+            follow_redirects=True)
+    
+            self.assertEqual(User.query.count(), 2)
+            # Get logged in user id 
+            user2 = User.query.filter_by(username='testuser2').first()      
+            # Now call /users/profile route
+            resp = client.delete(f"/users/{user2.id}", follow_redirects=True)
+
+            self.assertEqual(User.query.count(), 1)
+            self.assertEqual(resp.status_code, 200)
+
+    def testAddDeleteTrail(self):
+        with app.test_client() as client:
+            # Register a new user and login
+            resp = client.post("/users/register", data=NEW_USER2)
+            resp = client.post("/users/login", data=
+            {"username":"testuser2", "password": "password"},
+            follow_redirects=True)
+            user2 = User.query.filter_by(username='testuser2').first()
+            
+            # Test Add trail
+            resp = client.post(f'/users/{user2.id}/trails', json = {
+                "name": "testtrail2",
+                "distance": 4.5,
+                "duration": 35.4,
+                "coordinates": [[-121, 36.5], [-122, 37]],
+                "user_id": user2.id
+            })  
+
+            self.assertEqual(resp.status_code, 201)
+            self.assertEqual(Trail.query.count(), 2)
+            
+            # Test Delete Trail
+            trail2 = Trail.query.filter_by(name='testtrail2').first()
+            resp = client.post(f'/users/{user2.id}/trails/{trail2.id}/delete')
+
+            self.assertEqual(resp.status_code, 302)
+            self.assertEqual(Trail.query.count(), 1)
             
 

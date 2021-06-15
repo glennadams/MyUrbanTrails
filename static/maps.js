@@ -3,7 +3,7 @@
 mapboxgl.accessToken = 'pk.eyJ1IjoiZ2FkYW1zODg1IiwiYSI6ImNrcHZndzJrNjFhZmsycXFycnl2ejkxZmwifQ.TlHaR8imAHiVAfYR-sZ62A';
 
 // Map starting point in longitude, latitude (hardcode)
-const defaultLocation = [-121.608704, 36.703205];
+const defaultLocation = [-122.46928, 37.76777];
 const URL = 'http://127.0.0.1:5000'
 
 
