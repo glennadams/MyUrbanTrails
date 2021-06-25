@@ -75,7 +75,7 @@ Once the database is live, run the flask server and go the the localhost:5000.  
 
 The map part of the app utilizes the Mapbox GL JS library.  References to all of the required mapbox css and js libraries are included in the /templates/base.html page.
 
-**Locating and styling the amp object in the document.** An object is placed on the web page inside a div.  The info box is place below and overlays the map:
+**Locating and styling the map object in the document.** An object is placed on the web page inside a div.  The info box is place below and overlays the map:
 
 ```
 <div id='map'></div>
